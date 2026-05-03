@@ -67,9 +67,11 @@ jobs:
           docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
           docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest"
 
-      # 5. 更新 Cloud Run Job
+      # 5. 部署或更新 Cloud Run Job
       - name: Deploy to Cloud Run Job
         run: |-
-          gcloud run jobs update daily-news-job \
+          gcloud run jobs deploy daily-news-job \
             --image="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" \
-            --region="${{ env.REGION }}"
+            --region="${{ env.REGION }}" \
+            --max-retries=0 \
+            --task-timeout=60s
