@@ -109,6 +109,43 @@ def start_scheduler() -> None:
         scheduler.shutdown()
 
 
+def start_server() -> None:
+    """
+    啟動簡易 Web Server，用於 Cloud Run 等需要監聽 HTTP Port 的環境。
+    提供 / 端點作健康檢查，/trigger 端點可手動觸發抓取任務。
+    """
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+
+    class RequestHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/':
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.end_headers()
+                self.wfile.write("TaskNews Service is running. Use /trigger to run job.".encode("utf-8"))
+            elif self.path == '/trigger':
+                # 在背景執行，避免阻斷回應
+                threading.Thread(target=run_daily_job).start()
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.end_headers()
+                self.wfile.write("Job triggered in background.".encode("utf-8"))
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), RequestHandler)
+    logger.info(f"🌐 Web Server 啟動，監聽 Port {port} (支援 Cloud Run 部署)")
+    
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logger.info("🛑 Web Server 已停止。")
+        server.server_close()
+
+
 # ==========================================
 # AWS Lambda 入口點 (若使用 Serverless 部署)
 # ==========================================
@@ -136,9 +173,17 @@ if __name__ == "__main__":
         action="store_true",
         help="啟用排程模式（每日 08:00 自動執行）",
     )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="啟動 Web Server 模式 (支援 HTTP 端點觸發)",
+    )
     args = parser.parse_args()
 
-    if args.schedule:
+    # 自動偵測：如果環境變數有 PORT（如 Cloud Run），或是帶有 --server 參數，就啟動 Web Server
+    if args.server or "PORT" in os.environ:
+        start_server()
+    elif args.schedule:
         start_scheduler()
     else:
         # 單次執行模式
