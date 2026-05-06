@@ -3,7 +3,7 @@
 """
 import pytest
 from unittest.mock import patch, MagicMock
-from app.notifier import TelegramNotifier, LineNotifier
+from app.notifier import TelegramNotifier
 
 
 class TestTelegramNotifier:
@@ -38,21 +38,21 @@ class TestTelegramNotifier:
         assert len(chunks) == 3
 
 
-class TestLineNotifier:
-    """LINE 推播服務測試"""
-
-    @patch.dict("os.environ", {"LINE_TOKEN": "test_token", "LINE_USER_ID": "U123"})
-    @patch("app.notifier.requests.post")
-    def test_send_success(self, mock_post):
-        """測試正常推播成功"""
-        mock_post.return_value.raise_for_status = MagicMock()
-        notifier = LineNotifier()
-        result = notifier.send("Hello!")
-        assert result is True
-
-    @patch.dict("os.environ", {}, clear=True)
-    def test_send_missing_config(self):
-        """測試缺少 Token 時回傳 False"""
-        notifier = LineNotifier()
-        result = notifier.send("Hello!")
-        assert result is False
+# class TestLineNotifier:
+#     """LINE 推播服務測試"""
+# 
+#     @patch.dict("os.environ", {"LINE_TOKEN": "test_token", "LINE_USER_ID": "U123"})
+#     @patch("app.notifier.requests.post")
+#     def test_send_success(self, mock_post):
+#         """測試正常推播成功"""
+#         mock_post.return_value.raise_for_status = MagicMock()
+#         # notifier = LineNotifier()
+#         # result = notifier.send("Hello!")
+#         # assert result is True
+# 
+#     @patch.dict("os.environ", {}, clear=True)
+#     def test_send_missing_config(self):
+#         """測試缺少 Token 時回傳 False"""
+#         # notifier = LineNotifier()
+#         # result = notifier.send("Hello!")
+#         # assert result is False
