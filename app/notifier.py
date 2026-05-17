@@ -68,18 +68,49 @@ class TelegramNotifier(Notifier):
             return True
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Telegram 推播失敗: {e}")
+            error_msg = f"Telegram 推播失敗: {e}"
+            if e.response is not None:
+                error_msg += f" | 回應內容: {e.response.text}"
+            logger.error(error_msg)
             return False
 
     @staticmethod
     def _split_message(text: str, max_length: int = 4096) -> list:
-        """將過長的訊息切分為多段"""
+        """
+        將過長的訊息安全地依行切分為多段，避免打斷 HTML 標籤。
+        """
         if len(text) <= max_length:
             return [text]
+        
         chunks = []
-        while text:
-            chunks.append(text[:max_length])
-            text = text[max_length:]
+        current_chunk = []
+        current_length = 0
+        
+        lines = text.split("\n")
+        for line in lines:
+            line_len = len(line) + 1  # 包含換行符
+            
+            # 防禦性處理：若單行長度本身就超過上限（極端情況），則直接強制按字元切分
+            if line_len > max_length:
+                if current_chunk:
+                    chunks.append("\n".join(current_chunk))
+                    current_chunk = []
+                    current_length = 0
+                for i in range(0, len(line), max_length):
+                    chunks.append(line[i : i + max_length])
+                continue
+            
+            if current_length + line_len > max_length:
+                chunks.append("\n".join(current_chunk))
+                current_chunk = [line]
+                current_length = line_len
+            else:
+                current_chunk.append(line)
+                current_length += line_len
+                
+        if current_chunk:
+            chunks.append("\n".join(current_chunk))
+            
         return chunks
 
 

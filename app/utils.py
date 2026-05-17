@@ -50,9 +50,8 @@ def format_news_report(news_data: dict) -> str:
 
         for idx, article in enumerate(articles, start=1):
             title = html.escape(article.get("title", "無標題"))
-            link = article.get("link", "#")
-            report_lines.append(f"  {idx}. {title}")
-            report_lines.append(f"     🔗 <a href=\"{link}\">閱讀全文</a>")
+            link = html.escape(article.get("link", "#"))
+            report_lines.append(f"  {idx}. <a href=\"{link}\">{title}</a>")
 
         report_lines.append("")
 
