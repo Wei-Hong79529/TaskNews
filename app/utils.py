@@ -14,6 +14,12 @@ def setup_logging(level: int = logging.INFO) -> None:
     初始化全域日誌設定。
     所有模組的 logger 都會繼承此設定。
     """
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
     log_format = "%(asctime)s | %(levelname)-7s | %(name)s | %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
 

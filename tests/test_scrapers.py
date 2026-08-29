@@ -3,7 +3,7 @@
 """
 import pytest
 from unittest.mock import patch, MagicMock
-from app.scrapers import RSSScraper, NEWS_SOURCES
+from app.scrapers import RSSScraper, NewsScraper, NEWS_SOURCES
 
 
 class TestRSSScraper:
@@ -54,8 +54,21 @@ class TestRSSScraper:
             result = scraper.fetch()
             assert result == []
 
+    def test_translate_title_fallback_on_error_500(self):
+        """測試當翻譯回傳 Error 500 等錯誤內容時，優雅降級回傳原始標題"""
+        scraper = RSSScraper(url="https://example.com/rss", translate_to_zh=True)
+        original_title = "Global Market Rally"
+        error_500_response = "Error 500 (Server Error)!!1500.That’s an error."
+
+        with patch("app.scrapers.requests.get") as mock_get, patch("app.scrapers.translator.translate") as mock_trans:
+            mock_get.side_effect = Exception("Network timeout")
+            mock_trans.return_value = error_500_response
+            result = scraper._translate_title(original_title)
+            assert result == original_title
+
     def test_news_sources_configured(self):
         """測試預設新聞來源已正確設定"""
-        assert len(NEWS_SOURCES) == 3
+        assert len(NEWS_SOURCES) == 5
         for name, scraper in NEWS_SOURCES.items():
-            assert isinstance(scraper, RSSScraper)
+            assert isinstance(scraper, NewsScraper)
+
