@@ -10,7 +10,8 @@ import requests
 from abc import ABC, abstractmethod
 from typing import List, Dict
 from bs4 import BeautifulSoup
-from deep_translator import GoogleTranslator
+import time
+from deep_translator import GoogleTranslator, MyMemoryTranslator
 
 # 設定模組級別的 logger
 logger = logging.getLogger(__name__)
@@ -86,16 +87,25 @@ class RSSScraper(NewsScraper):
         except Exception as e:
             logger.debug(f"直接 Web 翻譯失敗 ({e})，嘗試備用方案...")
 
-        # 備用方案：deep_translator
+        # 備用方案 1：GoogleTranslator
         try:
             translated = translator.translate(title)
             if translated and not any(kw in translated.lower() for kw in TRANSLATION_ERROR_KEYWORDS):
                 return translated
-            logger.warning(f"標題翻譯回傳錯誤內容，使用原始標題: {title}")
-            return title
         except Exception as e:
-            logger.warning(f"標題翻譯失敗，使用原始標題 ({e}): {title}")
-            return title
+            logger.debug(f"GoogleTranslator 翻譯失敗 ({e})，嘗試 MyMemoryTranslator...")
+
+        # 備用方案 2：MyMemoryTranslator
+        try:
+            mymemory_translator = MyMemoryTranslator(source="english", target="chinese traditional")
+            translated = mymemory_translator.translate(title)
+            if translated and not any(kw in translated.lower() for kw in TRANSLATION_ERROR_KEYWORDS):
+                return translated
+        except Exception as e:
+            logger.debug(f"MyMemoryTranslator 翻譯失敗 ({e})")
+            
+        logger.warning(f"所有翻譯方案均失敗，使用原始標題: {title}")
+        return title
 
     def fetch(self) -> List[Dict[str, str]]:
         """
@@ -122,6 +132,7 @@ class RSSScraper(NewsScraper):
 
                 # 若啟用翻譯，將標題翻譯為繁體中文
                 if self.translate_to_zh:
+                    time.sleep(1.5)  # 避免觸發 Google Translate 的 Rate Limit (HTTP 429)
                     title = self._translate_title(title)
 
                 results.append({"title": title, "link": link})
